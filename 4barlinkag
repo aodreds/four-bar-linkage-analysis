@@ -1,0 +1,263 @@
+
+%% // Assignment 4 bar linkage analysis
+% // Date: June 4 2017  
+% // Mr. Sarayut Pongsanthia	M5842445
+
+%% // Note and symbols
+% // R2 crank // R1 ground link // R3 coupler link // R4 rocker
+% // P coupler point // beta the coupler angle(radian) 
+% // q2, q3 and q4 angle between the R2 and R1
+% // w2, w3 and w4 angular velocity
+% // a2, a3 and a4 angular acceleration
+% // RA,RB,RP,RPA position vector of the point A, B, P, point P refer to point A  
+% // VA,VB,VP and VPA Velocity of point A, B, P and point P refer to point A
+% // AA, AB, AP, APA Acceleration of the point A, B, AP, the point P refer to point A 
+
+%% // clear all before start
+clc; clear all; 
+m = 1;
+while (m > 0) % // filter program support
+%% // input data for 4 bar linkage %
+fprintf('\n')
+fprintf('please input grashof linkage\n');
+L1 = input('input ground = ');  
+L2 = input('input link 2 = ');
+L3 = input('input link 3 = ');
+L4 = input('input link 4 = ');
+fprintf('\n');
+
+%% // check grashof condition %
+ML = [L1 L2 L3 L4];    % get value to matrix %
+MS = sort(ML);         % sort value to min to max %
+L = MS(1,4);           % longest link %
+S = MS(1,1);           % shortest link %
+P = MS(1,2);           % mediam link %
+Q = MS(1,3);           % mediam link %
+
+%% // check grashof condition %
+if  L + S < P + Q
+    fprintf('this is grashof linkage\n');
+    % check grashof type
+        if  L1 == S     %% if shortest = L1 %%
+            fprintf('double crank type(program support)');     m = 0;
+            elseif L2 == S %% if shortest = L2 %%
+                fprintf('crank and rocker type(program support)'); 
+                fprintf('\n'); m = 0;
+            else
+                fprintf('please input grashof linkage\n'); 
+                fprintf('\n'); m = 1;
+        end
+    
+        elseif L + S == P + Q % parallelogram
+            fprintf('this is grashof linkage\n'); 
+            fprintf('   - parallelogram type(program not support)');
+            fprintf('\n'); m = 1;
+                        
+        elseif L + S > P + Q % non grashof linkage %
+            fprintf('this is non grashof linkage\n'); m = 1;
+            fprintf('   - triple rocker type(program not support)');
+            fprintf('\n');m = 1;
+        
+end
+end
+
+%% // define point p position.
+fprintf('\n');
+PA = input('input link PA = ');
+qpd = input('input point P (degree)= ');
+fprintf('\n');
+
+%% // transfer 4 bar dimension
+R1 = L1; R2 = L2; R3 = L3; R4 = L4;  %qpd = 30.0;
+beta = qpd*pi/180;
+
+%% // get velocity and acceleration
+w = input('Ang. velocity omega 2 (rad/s) = ');
+a = input('Ang. accel alpha 2 (rad/s^2) = ');
+
+%% formualr for solve path, velocity and acceleration
+for i = 1:360
+    w2(i,1) = w; % q2 angular velocity (rad/s)
+    a2(i,1) = a; % a2 angular acceleration (rad/s^2)
+    
+    q2d(i,1) = i;   % theta 2 in degree
+    q2(i,1) = i*pi/180; % theta 2 in radians
+    
+    % // A position
+    Ax(i,1) = R2*cos(q2(i,1)); % position x of link A
+    Ay(i,1) = R2*sin(q2(i,1)); % position y of link A
+     
+    K1(i,1) = R1/R2;   % constant for solve B
+    K2(i,1) = R1/R4;
+    K3(i,1) = (R2^2-R3^2+R4^2+R1^2)/(2*R2*R4);
+    K4(i,1) = R1/R3;
+    K5(i,1) = (R4^2-R1^2-R2^2-R3^2)/(2*R2*R3);
+
+    Aa(i,1) = cos(q2(i,1))-K1(i,1)-(K2(i,1)*cos(q2(i,1)))+K3(i,1); % constant
+    Bb(i,1) = -2*sin(q2(i,1));
+    Cc(i,1) = K1(i,1)-((K2(i,1)+1)*cos(q2(i,1)))+K3(i,1);
+    Dd(i,1) = cos(q2(i,1))-K1(i,1)+(K4(i,1)*cos(q2(i,1)))+K5(i,1);
+    Ee(i,1) = -2*sin(q2(i,1));
+    Ff(i,1) = K1(i,1)+((K4(i,1)-1)*cos(q2(i,1)))+K5(i,1);
+
+    % // open circuit equation q3 and q4
+    q31(i,1) = 2*atan2((-Ee(i,1)-sqrt(Ee(i,1)^2-4*Dd(i,1)*Ff(i,1))),2*Dd(i,1));
+    q41(i,1) = 2*atan2((-Bb(i,1)-sqrt(Bb(i,1)^2-4*Aa(i,1)*Cc(i,1))),2*Aa(i,1));
+
+    % // coupler position (P)
+    RA(i,1) = R2*exp(1i*q2(i,1));
+    RPA(i,1) = PA*exp(1i*(q31(i,1)+beta));
+    RP(i,1) = RA(i,1) + RPA(i,1);
+    Px(i,1) = real(RP(i,1));   % position x of link P
+    Py(i,1) = imag(RP(i,1));   % position y of link P
+    
+    % B position
+    RBA(i,1) = R3*exp(1i*q31(i,1));
+    RB(i,1) = RA(i,1) + RBA(i,1);
+    Bx(i,1) = real(RB(i,1));   % position x of link B
+    By(i,1) = imag(RB(i,1));   % position x of link B
+    
+    q31d = q31*180/pi;  % inverse radians to degree
+    q41d = q41*180/pi;
+    
+    q31d = q31d + (q31d < 0)*360;  % converse minus degree to plus degree
+    q41d = q41d + (q41d < 0)*360;
+
+    % // angular velocity equation
+    w3(i,1) = (-R2/R3)*w2(i,1)*((sin(q41(i,1)-q2(i,1)))/(sin(q41(i,1)-q31(i,1))));
+    w4(i,1) = (-R2/R4)*w2(i,1)*((sin(q31(i,1)-q2(i,1)))/(sin(q31(i,1)-q41(i,1))));
+    
+    % // linear velocity equation 
+    VA(i,1) = 1i*RA(i,1)*w2(i,1);  % linear velocity v = w*r
+    VB(i,1) = R4*w4(i,1)*1i*exp(1i*q41(i,1));
+    VBA(i,1) = VB(i,1)-VA(i,1);
+    VP(i,1) = R2*w2(i,1)*1i*exp(1i*q2(i,1))+ PA*exp(1i*(q31(i,1)+beta));
+    
+    % // angular acceleration equation
+    G(i,1) = R4*sin(q41(i,1));
+    H(i,1) = R3*sin(q31(i,1));
+    J(i,1) = R4*cos(q41(i,1));
+    K(i,1) = R3*cos(q31(i,1));
+
+    Ca(i,1) = (R2*a2(i,1)*sin(q2(i,1)))+((R2*w2(i,1)^2)*cos(q2(i,1)))+((R3*w3(i,1)^2)*cos(q31(i,1)))+((R4*w4(i,1)^2)*cos(q41(i,1)));
+    Fa(i,1) = (R2*a2(i,1)*cos(q2(i,1)))-((R2*w2(i,1)^2)*sin(q2(i,1)))-((R3*w3(i,1)^2)*sin(q31(i,1)))+((R4*w4(i,1)^2)*sin(q41(i,1)));
+    
+    a3(i,1) = (Ca(i,1)*J(i,1) - G(i,1)*Fa(i,1))/(G(i,1)*K(i,1) - H(i,1)*J(i,1));
+    a4(i,1) = (Ca(i,1)*K(i,1) - H(i,1)*Fa(i,1))/(G(i,1)*K(i,1) - H(i,1)*J(i,1));
+    
+    % // linear acceleration equation
+    AA(i,1) = (R2*a2(i,1)*1i*exp(1i*q2(i,1)))-(R2*w2(i,1)^2*exp(1i*q2(i,1)));
+    ABA(i,1)= (R3*a3(i,1)*1i*exp(1i*q31(i,1)))-(R3*w3(i,1)^2*exp(1i*q31(i,1)));
+    AB(i,1) = (R4*a4(i,1)*1i*exp(1i*q41(i,1)))-(R4*w4(i,1)^2*exp(1i*q41(i,1)));
+    APA(i,1) = PA*a3(i,1)*1i*exp(1i*(q2(i,1)+beta)) - PA*(w3(i,1)^2)*1i*exp(1i*(q2(i,1)+beta)); 
+    %AV(i,1) = AA(i,1) + ABA(i,1) - AB(i,1);
+      
+end
+
+%% define limmit x-y plot animation
+xmin = -1.5*R2;
+xmax = 1.2*(R1+1.2*R2);
+ymin = -1.2*R2;
+ymax = 0.75*(max(Py)+R4);
+
+%% // generate data animated link  
+for i = 1: 360
+    lins = 10; % // separate linspace
+    l2x(i,:) = linspace(Ax(i,1),Bx(i,1),lins); % // link AB
+    l2y(i,:) = linspace(Ay(i,1),By(i,1),lins);
+    apx(i,:) = linspace(Ax(i,1),Px(i,1),lins); % // link AP
+    apy(i,:) = linspace(Ay(i,1),Py(i,1),lins);    
+    bpx(i,:) = linspace(Bx(i,1),Px(i,1),lins); % // link BP
+    bpy(i,:) = linspace(By(i,1),Py(i,1),lins);    
+    pax1(i,:) = linspace(Ax(i,1),0,lins);   % // link A
+    pay1(i,:) = linspace(Ay(i,1),0,lins);    
+    pax2(i,:) = linspace(Bx(i,1),R1,lins); % // link B
+    pay2(i,:) = linspace(By(i,1),0,lins);
+
+end
+
+%% // plot animated link 
+for i = 1:360
+        figure(1);
+        set(gcf,'units','normalized','outerposition',[0 0 1 1])
+        plot(Ax(i,1),Ay(i,1),'b',Bx(i,1),By(i,:),'b',Px(i,:),Py(i,:),'b') % // plot path A, B and P
+        plot(l2x(i,:),l2y(i,:),'k', pax1(i,:),pay1(i,:),'g', pax2(i,:),pay2(i,:),'r' ,apx(i,:),apy(i,:),'k',bpx(i,:),bpy(i,:),'k') % // plot link A and B
+        hold on
+        plot(0,0,'sk',R1,0,'sk','MarkerSize',6)
+        plot(0,0,'ok',R1,0,'ok')
+        plot(Ax(i,end),Ay(i,end),'og','MarkerSize',6,'MarkerFaceColor','g') % // mark on A
+        plot(Bx(i,end),By(i,end),'or','MarkerSize',6,'MarkerFaceColor','r') % // mark on B
+        plot(Px(i,end),Py(i,end),'ob','MarkerSize',6,'MarkerFaceColor','b') % // mark on P
+        axis([xmin xmax ymin ymax]) % // plot border(x, y)
+                       
+        plot(Ax(1:i,end),Ay(1:i,end),'--g','linewidth',1.5) % // plot A point
+        plot(Bx(1:i,end),By(1:i,end),'--r','linewidth',1.5) % // plot B point
+        plot(Px(1:i,end),Py(1:i,end),'--b','linewidth',1.5) % // plot P point
+        hold off
+        title('Path motion A, B and P point');
+        xlabel('X-Axis');
+        ylabel('Y-Axis');
+        grid on
+        daspect([1 1 1]) % fix plot ratio 1:1
+
+end
+
+%%
+pause(5); % // pause for 3 sec.
+
+%% // plot 6 graph in to a page
+figure(2)
+set(gcf,'units','normalized','outerposition',[0 0 1 1])
+%% // plot path A, B and P
+subplot(3,2,1);
+plot(Ax,Ay, Bx,By, Px,Py)  % path for A,B and P
+title('linkage path motion')
+legend('point A','point B','point P')
+ylabel('y-axis')
+xlabel('x-axis')
+axis([xmin*1.5 xmax*1.5 ymin ymax])
+daspect([1 1 1]) % fix plot ratio 1:1
+set(legend,'color','none');
+grid on
+%% // plot theta q for open circuit
+subplot(3,2,2); 
+plot(q2d,q2d, q2d,q31d, q2d,q41d)  % linkage angular
+title('linkage angular')
+legend('\theta 2','\theta 3','\theta 4')
+ylabel('input theta 2 (degree)')
+xlabel('output angle (degree)') 
+grid on
+%% // plot omega w for open circuit
+subplot(3,2,3); 
+plot(q2d,w2,q2d,w3,q2d,w4);   % plot angular velocity
+legend('\omega 2','\omega 3','\omega 4')
+title('linkage angular velocity')
+ylabel('angular velocity (rad/s)')
+xlabel('input degree \theta 2') 
+grid on
+%% // plot linear velocity
+subplot(3,2,4); 
+plot(q2d,(VA),q2d,(VB),q2d,(VBA),q2d,(VP)) % plot linear velocity
+legend('VA','VB','VBA','VP')
+title('linear velocity')
+ylabel('linear velocity (unit/s)')
+xlabel('input degree \theta 2') 
+grid on
+%% // plot angular acceleration
+subplot(3,2,5); 
+plot(q2d,a2,q2d,a3,q2d,a4); % plot angular acceleration
+legend('\alpha 2','\alpha 3','\alpha 4')
+title('angular acceleration')
+ylabel('angular acceleration(rad/s^2)')
+xlabel('input degree \theta 2') 
+grid on
+%% // plot linear acceleration
+subplot(3,2,6); 
+plot(q2d,AA,q2d,AB,q2d,ABA,q2d,APA); %  plot linear acceleration
+legend('AA','AB','ABA','APA')
+title('acceleration vector')
+ylabel('acceleration(rad/s^2)')
+xlabel('input degree \theta 2') 
+grid on
+
+%% // finished thank you \\ %%
